@@ -17,6 +17,8 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# TODO: list recordings
+
 import urllib
 import urllib2
 from lxml import etree
@@ -84,6 +86,11 @@ class RestfulAPI:
             req_url = "%stimers/%s.xml"%(self.base_url,arg)
             xml_str = "timers"
             keyword = "timer"
+
+        if cat == "recordings":
+            req_url = "%srecordings.xml"%(self.base_url)
+            xml_str = "recordings"
+            keyword = "recording"
         
         elementlist = []
 
@@ -129,3 +136,7 @@ class RestfulAPI:
             count = 0
             total = 0            
         return timer_list, count, total
+
+    def get_recordings(self):
+        rec_list, count, total = self.get_list(cat="recordings") 
+        return rec_list, count, total
