@@ -24,6 +24,7 @@
 #       infos (used versions and plugins)
 #       OSD... maybe
 
+import httplib
 import urllib
 import urllib2
 from lxml import etree
@@ -169,3 +170,31 @@ class RestfulAPI:
                     url = "%schannels/image/%s"%(self.base_url,channel['channel_id'])   
                     break    
         return url
+
+    def switch_to_channel(self, channel_id=None, channel_name=None):
+        channels, count, total = self.get_channels()
+        url=''
+        for channel in channels:
+            if channel_id != None:
+                if (channel['channel_id'] == channel_id) or (channel['name'] == channel_name):
+                    bot = HttpBot()
+                    print "%sremote/switch/%s"%(self.base_url,channel_id)
+                    ignored_html = bot.POST("%sremote/switch/%s"%(self.base_url,channel_id), {})
+
+    def send_remote(self, command):
+        '''valid commands: Up, Down, Menu, Ok, Back, Left, Right, Red, Green, Yellow, Blue, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, Info, Play, Pause, Stop, Record, FastFwd, FastRew, Next, Prev, Power, ChanUp, ChanDn, ChanPrev, VolUp, VolDn, Mute, Audio, Subtitles, Schedule, Channels, Timers, Recordings, Setup, Commands, User0, User1, User2, User3, User4, User5, User6, User7, User8, User9, None, Kbd'''
+        bot = HttpBot()
+        ignored_html = bot.POST("%sremote/%s"%(self.base_url,command), {})
+
+class HttpBot:
+    """an HttpBot represents one browser session, with cookies."""
+    def __init__(self):
+        #cookie_handler= urllib2.HTTPCookieProcessor()
+        redirect_handler= urllib2.HTTPRedirectHandler()
+        self._opener = urllib2.build_opener(redirect_handler)#, cookie_handler)
+
+    def GET(self, url):
+        return self._opener.open(url).read()
+
+    def POST(self, url, parameters):
+        return self._opener.open(url, urllib.urlencode(parameters)).read()
