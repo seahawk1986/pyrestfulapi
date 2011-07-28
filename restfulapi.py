@@ -17,7 +17,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# TODO: list recordings
+# TODO: POST and DELETE commands
 
 import urllib
 import urllib2
