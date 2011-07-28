@@ -17,7 +17,12 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# TODO: POST and DELETE commands
+# TODO: POST and DELETE commands (timers, recordings, remote control)
+#       EPG search
+#       searchtimer
+#       channelimages
+#       infos (used versions and plugins)
+#       OSD... maybe
 
 import urllib
 import urllib2
@@ -36,7 +41,7 @@ class RestfulAPI:
             raw_elements = xmltree.getchildren()
             return raw_elements
 
-    def get_list(self,raw_elements,xml_str=None,keyword=None):    
+    def get_entrys(self,raw_elements,xml_str=None,keyword=None):    
             entry_list = []    
             for entry in raw_elements:
                 if entry.tag == "{http://www.domain.org/restfulapi/2011/%s-xml}%s"%(xml_str,keyword):
@@ -58,6 +63,7 @@ class RestfulAPI:
             return entry_list, count, total           
 
     def get_list(self,cat=None,arg="",start=0,limit=0):
+        print cat
 
         if cat == "channels":
             req_url = "%s%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
@@ -93,12 +99,13 @@ class RestfulAPI:
             keyword = "recording"
         
         elementlist = []
-
-        elementlist, count, total = self.get_list(get_elements(req_url),xml_str,keyword)
+        if req_url:
+            elementlist, count, total = self.get_entrys(self.get_elements(req_url),xml_str,keyword)
+        else: pass
         return elementlist, count, total
 
     def get_channels(self,start=0,limit=0):
-        channel_list, count, total = self.get_list(cat="channels",start=start,limit=limit)         
+        channel_list, count, total = self.get_list(cat="channels",start=start,limit=limit)
         return channel_list, count, total
 
     def get_channel(self,channel_id=None):
@@ -155,3 +162,11 @@ class RestfulAPI:
                 channel = None
                 video = entry.text
         return channel, video
+
+    def get_channel_image_url(self, channel_id=None, channel_name=None):
+        channels, count, total = self.get_channels()
+        for channel in channels:
+            if (channel['channel_id'] == channel_id) or (channel['name'] == channel_name):
+                if channel['image'] == 'true':
+                    url = "$schannels/image/%s"%(self.base_url,channel['channel_id'])
+        return url
