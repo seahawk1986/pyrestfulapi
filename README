@@ -1,0 +1,45 @@
+#   This is a python-module to access informations using VDR's RESTFULAPI plugin.
+#   Copyright (C) 2011  by Alexander Grothe <alexandergrothe@gmx.de>
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+This python module gets information from VDR's RESTFULAPI plugin and shows it as list of dictionary entrys.
+
+Example usage:
+
+>>> import restfulapi
+>>> MyAPI = restfulapi.RestfulAPI(ip="192.168.1.117")
+>>> channellist, count, total = MyAPI.get_channels(start=25,limit=3)
+>>> for channel in channellist:
+...   print channel
+...
+{'group': 'DVB-C frei', 'name': 'EinsExtra', 'stream': 'C-1-1051-28721.ts', 'image': 'true
+', 'is_sat': 'false', 'transponder': '458', 'number': '26', 'channel_id': 'C-1-1051-28721'
+, 'is_terr': 'false', 'is_radio': 'false', 'is_cable': 'true', 'is_atsc': 'false'}
+{'group': 'DVB-C frei', 'name': 'Einsfestival', 'stream': 'C-1-1051-28722.ts', 'image': 't
+rue', 'is_sat': 'false', 'transponder': '458', 'number': '27', 'channel_id': 'C-1-1051-287
+22', 'is_terr': 'false', 'is_radio': 'false', 'is_cable': 'true', 'is_atsc': 'false'}
+{'group': 'DVB-C frei', 'name': 'EinsPlus', 'stream': 'C-1-1051-28723.ts', 'image': 'true'
+, 'is_sat': 'false', 'transponder': '458', 'number': '28', 'channel_id': 'C-1-1051-28723',
+ 'is_terr': 'false', 'is_radio': 'false', 'is_cable': 'true', 'is_atsc': 'false'}
+>>> print "Found %s of %s channels"%(count, total)
+Found 3 of 178 channels
+>>> print channellist[0]['name']
+EinsExtra
+>>> timers, count, total = MyAPI.get_timers()
+>>> print "Found %s timer(s)."%(count)
+Found 1 timer(s).
+>>> print timers[0]['filename']
+Tagesschau
+
