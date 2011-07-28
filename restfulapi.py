@@ -63,7 +63,6 @@ class RestfulAPI:
             return entry_list, count, total           
 
     def get_list(self,cat=None,arg="",start=0,limit=0):
-        print cat
 
         if cat == "channels":
             req_url = "%s%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
@@ -99,9 +98,7 @@ class RestfulAPI:
             keyword = "recording"
         
         elementlist = []
-        if req_url:
-            elementlist, count, total = self.get_entrys(self.get_elements(req_url),xml_str,keyword)
-        else: pass
+        elementlist, count, total = self.get_entrys(self.get_elements(req_url),xml_str,keyword)
         return elementlist, count, total
 
     def get_channels(self,start=0,limit=0):
@@ -165,8 +162,10 @@ class RestfulAPI:
 
     def get_channel_image_url(self, channel_id=None, channel_name=None):
         channels, count, total = self.get_channels()
+        url = ''
         for channel in channels:
             if (channel['channel_id'] == channel_id) or (channel['name'] == channel_name):
                 if channel['image'] == 'true':
-                    url = "$schannels/image/%s"%(self.base_url,channel['channel_id'])
+                    url = "%schannels/image/%s"%(self.base_url,channel['channel_id'])   
+                    break    
         return url
