@@ -17,10 +17,10 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# TODO: POST and DELETE commands (timers, recordings, remote control)
+# TODO: POST and DELETE commands (timers, recordings)
 #       EPG search
 #       searchtimer
-#       channelimages
+#       download channelimages
 #       infos (used versions and plugins)
 #       OSD... maybe
 
@@ -36,6 +36,7 @@ class RestfulAPI:
         self.port = port
         self.channels = []
         self.base_url = "http://%s:%s/"%(self.ip,self.port)
+        self.channels, self.count, self.total = self.get_channels()
 
     def get_elements(self,req_url):
             xmltree = etree.fromstring(urllib2.urlopen(req_url).read())
@@ -161,22 +162,20 @@ class RestfulAPI:
                 video = entry.text
         return channel, video
 
-    def get_channel_image_url(self, channel_id=None, channel_name=None):
-        channels, count, total = self.get_channels()
+    def get_channel_image_url(self, channel_id=None, name=None):
         url = ''
-        for channel in channels:
-            if (channel['channel_id'] == channel_id) or (channel['name'] == channel_name):
+        for channel in self.channels:
+            if (channel['channel_id'] == channel_id) or (channel['name'] == name):
                 if channel['image'] == 'true':
                     url = "%schannels/image/%s"%(self.base_url,channel['channel_id'])   
                     break    
         return url
 
-    def switch_to_channel(self, channel_id=None, channel_name=None):
-        channels, count, total = self.get_channels()
+    def switch_to_channel(self, channel_id=None, name=None):
         url=''
-        for channel in channels:
+        for channel in self.channels:
             if channel_id != None:
-                if (channel['channel_id'] == channel_id) or (channel['name'] == channel_name):
+                if (channel['channel_id'] == channel_id) or (channel['name'] == name):
                     bot = HttpBot()
                     print "%sremote/switch/%s"%(self.base_url,channel_id)
                     ignored_html = bot.POST("%sremote/switch/%s"%(self.base_url,channel_id), {})
