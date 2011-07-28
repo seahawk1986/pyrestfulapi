@@ -31,14 +31,12 @@ class RestfulAPI:
         self.channels = []
         self.base_url = "http://%s:%s/"%(self.ip,self.port)
 
-    def get_list(self,cat=None,arg="",start=0,limit=0):
-
-        def get_elements(req_url):
+    def get_elements(self,req_url):
             xmltree = etree.fromstring(urllib2.urlopen(req_url).read())
             raw_elements = xmltree.getchildren()
             return raw_elements
 
-        def get_list(raw_elements,xml_str=None,keyword=None):    
+    def get_list(self,raw_elements,xml_str=None,keyword=None):    
             entry_list = []    
             for entry in raw_elements:
                 if entry.tag == "{http://www.domain.org/restfulapi/2011/%s-xml}%s"%(xml_str,keyword):
@@ -58,6 +56,8 @@ class RestfulAPI:
                     total = int(entry.text)
                     #print "Total "+entry.text+" elements."
             return entry_list, count, total           
+
+    def get_list(self,cat=None,arg="",start=0,limit=0):
 
         if cat == "channels":
             req_url = "%s%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
@@ -94,7 +94,7 @@ class RestfulAPI:
         
         elementlist = []
 
-        elementlist, count, total = get_list(get_elements(req_url),xml_str,keyword)
+        elementlist, count, total = self.get_list(get_elements(req_url),xml_str,keyword)
         return elementlist, count, total
 
     def get_channels(self,start=0,limit=0):
@@ -116,7 +116,7 @@ class RestfulAPI:
 
     def get_group_channels(self,group=None,start=0,limit=0):
         if group != None:
-            group=urllib.quote(group)
+            group = urllib.quote(group)
             channel_list, count, total = self.get_list(cat="group",arg=group,start=start,limit=limit)
         else:
             channel_list = []
@@ -140,3 +140,18 @@ class RestfulAPI:
     def get_recordings(self):
         rec_list, count, total = self.get_list(cat="recordings") 
         return rec_list, count, total
+
+    def get_info(self):
+        cat = "info"
+        req_url = "%s%s.xml"%(self.base_url,cat)
+        xml_str = "info"
+        keyword = "channel"
+        raw_elements = self.get_elements(req_url)
+        for entry in raw_elements:
+            if entry.tag == "{http://www.domain.org/restfulapi/2011/%s-xml}%s"%(xml_str,keyword):
+                channel = entry.text
+                video = None
+            if entry.tag == "{http://www.domain.org/restfulapi/2011/%s-xml}%s"%(xml_str,"video"):
+                channel = None
+                video = entry.text
+        return channel, video
