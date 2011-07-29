@@ -17,17 +17,46 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# TODO: POST and DELETE commands (timers, recordings)
+# TODO: POST, PUT and DELETE commands (timers, searchtimer, search)
+#       ERROR handling (connection, double timers etc.)
 #       EPG search
 #       searchtimer
-#       download channelimages
+#       download channel images
 #       infos (used versions and plugins)
 #       OSD... maybe
 
-import httplib
 import urllib
 import urllib2
 from lxml import etree
+import httplib
+import simplejson
+
+class HttpClient:
+    def __init__(self):
+        redirect_handler= urllib2.HTTPRedirectHandler()
+        self._opener = urllib2.build_opener(redirect_handler)
+
+    def GET(self, url):
+        return self._opener.open(url).read()
+
+    def POST(self, url,parameters):
+        return self._opener.open(url, urllib.urlencode(parameters)).read()
+
+    def PUT(self, url="",body='',header='HTTP/1.1'):
+        opener = urllib2.build_opener(urllib2.HTTPHandler)
+        body
+        request = urllib2.Request(url, body)
+        request.add_header('Content-Type', header)
+        request.get_method = lambda: 'PUT'
+        return opener.open(request).read()
+
+    def DELETE(self, url="",header='HTTP/1.1'):
+        opener = urllib2.build_opener(urllib2.HTTPHandler)
+        request = urllib2.Request(url)
+        request.add_header('Content-Type', header)
+        request.get_method = lambda: 'DELETE'
+        return opener.open(request).read()
+
 
 class RestfulAPI:
 
@@ -35,8 +64,10 @@ class RestfulAPI:
         self.ip = ip
         self.port = port
         self.channels = []
-        self.base_url = "http://%s:%s/"%(self.ip,self.port)
+        self.base_url = "http://%s:%s"%(self.ip,self.port)
         self.channels, self.count, self.total = self.get_channels()
+        self.HTTP = HttpClient()
+        self.JSON = simplejson.JSONDecoder()
 
     def get_elements(self,req_url):
             xmltree = etree.fromstring(urllib2.urlopen(req_url).read())
@@ -67,7 +98,7 @@ class RestfulAPI:
     def get_list(self,cat=None,arg="",start=0,limit=0):
 
         if cat == "channels":
-            req_url = "%s%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
+            req_url = "%s/%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
             xml_str = "channels"
             keyword = "channel"
 
@@ -77,25 +108,25 @@ class RestfulAPI:
             keyword = "channel"
             
         if cat == "groups":
-            req_url = "%schannels/%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
+            req_url = "%s/channels/%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
             xml_str = "groups"
             keyword = "group"
         if cat == "group":
-            req_url = "%schannels.xml?%s=%s&start=%s&limit=%s"%(self.base_url,cat,arg,start,limit)
+            req_url = "%s/channels.xml?%s=%s&start=%s&limit=%s"%(self.base_url,cat,arg,start,limit)
             xml_str = "channels"
             keyword = "channel"
 
         if cat == "timers":
-            req_url = "%s%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
+            req_url = "%s/%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
             xml_str = "timers"
             keyword = "timer"
         if cat == "timer":
-            req_url = "%stimers/%s.xml"%(self.base_url,arg)
+            req_url = "%s/timers/%s.xml"%(self.base_url,arg)
             xml_str = "timers"
             keyword = "timer"
 
         if cat == "recordings":
-            req_url = "%srecordings.xml"%(self.base_url)
+            req_url = "%s/recordings.xml"%(self.base_url)
             xml_str = "recordings"
             keyword = "recording"
         
@@ -147,9 +178,15 @@ class RestfulAPI:
         rec_list, count, total = self.get_list(cat="recordings") 
         return rec_list, count, total
 
+    def delete_recording(self, rec_number=None):
+        if rec_number != None:
+            url = "%s/recording/%s"%(self.base_url,rec_number)
+            ignored_html = self.HTTP.DELETE(url)
+        
+
     def get_info(self):
         cat = "info"
-        req_url = "%s%s.xml"%(self.base_url,cat)
+        req_url = "%s/%s.xml"%(self.base_url,cat)
         xml_str = "info"
         keyword = "channel"
         raw_elements = self.get_elements(req_url)
@@ -167,7 +204,7 @@ class RestfulAPI:
         for channel in self.channels:
             if (channel['channel_id'] == channel_id) or (channel['name'] == name):
                 if channel['image'] == 'true':
-                    url = "%schannels/image/%s"%(self.base_url,channel['channel_id'])   
+                    url = "%s/channels/image/%s"%(self.base_url,channel['channel_id'])   
                     break    
         return url
 
@@ -176,24 +213,84 @@ class RestfulAPI:
         for channel in self.channels:
             if channel_id != None:
                 if (channel['channel_id'] == channel_id) or (channel['name'] == name):
-                    bot = HttpBot()
-                    print "%sremote/switch/%s"%(self.base_url,channel_id)
-                    ignored_html = bot.POST("%sremote/switch/%s"%(self.base_url,channel_id), {})
+                    client = HttpClient()
+                    print "%s/remote/switch/%s"%(self.base_url,channel_id)
+                    ignored_html = self.HTTP.POST("%s/remote/switch/%s"%(self.base_url,channel_id), {})
 
     def send_remote(self, command):
-        '''valid commands: Up, Down, Menu, Ok, Back, Left, Right, Red, Green, Yellow, Blue, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, Info, Play, Pause, Stop, Record, FastFwd, FastRew, Next, Prev, Power, ChanUp, ChanDn, ChanPrev, VolUp, VolDn, Mute, Audio, Subtitles, Schedule, Channels, Timers, Recordings, Setup, Commands, User0, User1, User2, User3, User4, User5, User6, User7, User8, User9, None, Kbd'''
-        bot = HttpBot()
-        ignored_html = bot.POST("%sremote/%s"%(self.base_url,command), {})
+        '''"Up", "Down", "Menu", "Ok", "Back", "Left", "Right", "Red", "Green", "Yellow", "Blue", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "Info", "Play", "Pause", "Stop", "Record", "FastFwd", "FastRew", "Next", "Prev", "Power", "ChanUp", "ChanDn", "ChanPrev", "VolUp", "VolDn", "Mute", "Audio", "Subtitles", "Schedule", "Channels", "Timers", "Recordings", "Setup", "Commands", "User0", "User1", "User2", "User3", "User4", "User5", "User6", "User7", "User8", "User9", "None", "Kbd"'''
+        valid_commands=["Up", "Down", "Menu", "Ok", "Back", "Left", "Right", "Red", "Green", "Yellow", "Blue", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "Info", "Play", "Pause", "Stop", "Record", "FastFwd", "FastRew", "Next", "Prev", "Power", "ChanUp", "ChanDn", "ChanPrev", "VolUp", "VolDn", "Mute", "Audio", "Subtitles", "Schedule", "Channels", "Timers", "Recordings", "Setup", "Commands", "User0", "User1", "User2", "User3", "User4", "User5", "User6", "User7", "User8", "User9", "None", "Kbd"]
+        client = HttpClient()
+        ignored_html = self.HTTP.POST("%s/remote/%s"%(self.base_url,command), {})
 
-class HttpBot:
-    """an HttpBot represents one browser session, with cookies."""
-    def __init__(self):
-        #cookie_handler= urllib2.HTTPCookieProcessor()
-        redirect_handler= urllib2.HTTPRedirectHandler()
-        self._opener = urllib2.build_opener(redirect_handler)#, cookie_handler)
+    def create_timer(self, params={'file':'Test','flags':'1','start':'1200','stop':'1215','day':'2099-08-08','channel':'T-8468-12290-32','weekdays':'-------'}):
+        ignored_html = self.HTTP.POST("%s/timers"%(self.base_url), params)
 
-    def GET(self, url):
-        return self._opener.open(url).read()
+    def create_timer_dict(self, filename='Test', flags='1', start='1200', stop='1215', day='2099-08-08',channel='T-8468-12290-32',weekdays='-------'):
+        timerdict = {}
+        timerdict['file']=filename
+        timerdict['flags']=flags
+        timerdict['start']=start
+        timerdict['stop']=stop
+        timerdict['day']=day
+        timerdict['channel']=channel
+        timerdict['weekdays']=weekdays
+        return timerdict
 
-    def POST(self, url, parameters):
-        return self._opener.open(url, urllib.urlencode(parameters)).read()
+    def update_timer(self, timer_id, params={}):
+        url = "%s/timers.json"%self.base_url
+        params['timer_id']=timer_id
+        json = simplejson.dumps(params)
+        print params
+        ignored_html = self.HTTP.PUT(url, json)
+
+    def remove_timer(self, timer_id):
+        url = "%s/timers/%s"%(self.base_url,timer_id)
+        ignored_html = self.HTTP.DELETE(url)
+
+    def get_category(self,cat=None,arg="",start=0,limit=0):
+        '''get tuple of category entries as (dictionary, number of found entries, total number)
+           allowed categories: channels, channel [arg="<channel name>"], groups, group [arg="<groupname>"],
+           timers, timer [arg="<timer name>"], recordings
+           use start=n to begin with n-th entry and limit=m to recieve m entries.'''
+
+        if cat == "channels":
+            req_url = "%s/%s.json?start=%s&limit=%s"%(self.base_url,cat,start,limit)
+            xml_str = "channels"
+            keyword = "channel"
+
+        if cat == "channel":
+            req_url = "%s/channels/%s.json"%(self.base_url,arg)
+            xml_str = "channels"
+            keyword = "channel"
+            
+        if cat == "groups":
+            req_url = "%s/channels/%s.json?start=%s&limit=%s"%(self.base_url,cat,start,limit)
+            xml_str = "groups"
+            keyword = "group"
+        if cat == "group":
+            req_url = "%s/channels.json?%s=%s&start=%s&limit=%s"%(self.base_url,cat,arg,start,limit)
+            xml_str = "channels"
+            keyword = "channel"
+
+        if cat == "timers":
+            req_url = "%s/%s.json?start=%s&limit=%s"%(self.base_url,cat,start,limit)
+            xml_str = "timers"
+            keyword = "timer"
+        if cat == "timer":
+            req_url = "%s/timers/%s.json"%(self.base_url,arg)
+            xml_str = "timers"
+            keyword = "timer"
+
+        if cat == "recordings":
+            req_url = "%s/recordings.json"%(self.base_url)
+            xml_str = "recordings"
+            keyword = "recording"
+        
+        elementlist = []
+        json = self.JSON.decode(self.HTTP.GET(req_url))
+        return json['%s'%xml_str], json['count'], json['total']
+        
+        
+
+
