@@ -164,12 +164,14 @@ class RestfulAPI:
     def get_channel_by_number(self, number=None):
         ret_ch = None
         if number != None:
-            number = int(number)
-            channel_list,count,total = self.get_category(cat="channels")
-            for channel in channel_list:
-                if channel['number'] == number:
-                    ret_ch = channel
-                    break
+            number = int(re.sub("[^0-9]", "",number))
+            if number > 0:
+                channel_list,count,total = self.get_category(cat="channels")
+                for channel in channel_list:
+                    if channel['number'] == number:
+                        ret_ch = channel
+                        break
+            
         return ret_ch
 
                 
@@ -240,7 +242,7 @@ class RestfulAPI:
         except:
             video = None
 
-        return channel, video
+        return [channel, video]
 
     def get_channel_image_url(self, channel_id=None, name=None):
         url = ''
@@ -356,7 +358,7 @@ class RestfulAPI:
 
     def epg_search(self, args={"query":"","mode":0}, limit=0, start=0):
         req_url = "%s/events/search.json?start=%s&limit=%s"%(self.base_url,start,limit)
-        json = self.JSON.decode(self.HTTP.POST(req_url,args))
+        json = self.JSON.decode(self.HTTP.POST_json(req_url,args))
         return json['events'], json['count'], json['total']
 
     def create_search_dict(self, query="",mode=0,channel_id="",use_title="true",use_subtitle="false",use_description="false"):
@@ -370,58 +372,80 @@ class RestfulAPI:
 
     def get_osd(self):
         url = "%s/osd.json"%(self.base_url)
-        return_val = {}
+        return_val = {'red':None,'yellow':None,'green':None,'blue':None,'title':None,'channel':None,'items':[]}
         try:
             osd = self.JSON.decode(self.HTTP.GET(url))
         except:
-            return return_val
+            osd = None
+            return [osd,return_val]
         
-        try:
-            if osd['ChannelOsd']:
-                channel_number, channel_name = re.split("\s*",osd['ChannelOsd'],1)
-                return_val['channel']=self.get_channel_by_number(channel_number)
-        except:
-            pass
-        try:
 
-            if osd['ProgrammeOsd']:
-                return_val['events']=osd['ProgrammeOsd']
-        except:
-            pass
-        try:
-            if (osd['TextOsd']) and (len(osd['TextOsd']['items']) > 0):
-                
-                red = osd['TextOsd']['red']
-                yellow = osd['TextOsd']['yellow']
-                green = osd['TextOsd']['green']
-                blue = osd['TextOsd']['blue']
-                title = osd['TextOsd']['title']
-                # check if "normal" OSD menu is displayed (navigation by numbers is possible)
-                if re.match("^[0-9]{1,}\s*\w*", osd['TextOsd']['items'][0]['content'].lstrip()):
-                    print "Schema: <Nummer> <Eintrag>"
-                    for item in osd['TextOsd']['items']:
-                        number, value = re.split("\s*", item['content'].lstrip())
-                # check if normal navigation as in EPG
-                elif re.match("^\w{1,}\s*.*[0-9]{2}:[0-9]{2}",osd['TextOsd']['items'][0]['content'].lstrip()):
-                    print "Schema: Eintrag ohne Nummer"
-                    for item in osd['TextOsd']['items']:
-                        #print item['content']
-                        pass                
+        if osd.has_key('ChannelOsd'):
+            channel_number, channel_name = re.split("\s*",osd['ChannelOsd'],1)
+            return_val['channel']=self.get_channel_by_number(channel_number)
+            print "Now Playing: ",self.get_channel_by_number(channel_number)
 
-                elif re.match("^\w{1,}.*:",osd['TextOsd']['items'][0]['content'].lstrip()):
-                    print "Settings/Selection"
-                    # This does not work because there are no values returned that are selected for editing :
-                    for item in osd['TextOsd']['items']:
-                        if item['is_selected'] == True:
-                            if re.match("^.*:.*[.*].*",item['content']):
-                                print "Editing value"
+        if osd.has_key('ProgrammeOsd'):
+                #print "Programm-Infos"
+                return_val['title'] = "Jetzt und Gleich"
+                for key in osd['ProgrammeOsd'].keys():
+                    #print key
+                    return_val['items'].append([key,osd['ProgrammeOsd'][key],False]) 
+
+        
+        if (osd.has_key('TextOsd')) and (len(osd['TextOsd']['items']) > 0):
+            
+            return_val['red'] = osd['TextOsd']['red']
+            return_val['yellow'] = osd['TextOsd']['yellow']
+            return_val['green'] = osd['TextOsd']['green']
+            return_val['blue'] = osd['TextOsd']['blue']
+            return_val['title'] = osd['TextOsd']['title']
+            
+            # check if "normal" OSD menu is displayed (navigation by numbers is possible)
+            if re.match("^[0-9]{1,}\s*\w*", osd['TextOsd']['items'][0]['content'].lstrip()):
+                #print "Schema: <Nummer> <Eintrag>"
+                for item in osd['TextOsd']['items']:
+                    number, value = re.split("\s*",item['content'].lstrip(),1)
+                    #print number,value
+                    return_val['items'].append([number,value,item['is_selected']])
+            # check if normal navigation as in EPG
+            elif re.match("^\w{1,}\s*.*[0-9]{2}:[0-9]{2}",osd['TextOsd']['items'][0]['content'].lstrip()):
+                print "Schema: Eintrag ohne Nummer"
+                for item in osd['TextOsd']['items']:
+                    print item['content']
+                    return_val['items'].append(["",item['content'],item['is_selected']])
+                    pass                
+
+            elif re.match("^\w{1,}.*:",osd['TextOsd']['items'][0]['content'].lstrip()):
+                #print "Settings/Selection"
+                '''# This does not work because there are no values returned that are selected for editing :
+                for item in osd['TextOsd']['items']:
+                    if item['is_selected'] == True:
+                        if re.match("^.*:.*[.*].*",item['content']):
+                            print "Editing value"'''
+                for item in osd['TextOsd']['items']:
+                    if item['is_selected'] == True:
+                        if re.match("^.*:.*[.*].*",item['content']):
+                            print "Editing value %s"%(item['content'])
+                    return_val['items'].append(["",item['content'],item['is_selected']])
+
             else:
-                print "No content"
-        except:
-            pass
+                for item in osd['TextOsd']['items']:
+                    if item['is_selected'] == True:
+                        if re.match("^.*:.*[.*].*",item['content']):
+                            print "Editing value %s"%(item['content'])
+                    return_val['items'].append(["",item['content'],item['is_selected']])
+
+        elif (osd.has_key('TextOsd')) and (len(osd['TextOsd']['items']) == 0):
+            
+            return_val['red'] = osd['TextOsd']['red']
+            return_val['yellow'] = osd['TextOsd']['yellow']
+            return_val['green'] = osd['TextOsd']['green']
+            return_val['blue'] = osd['TextOsd']['blue']
+            return_val['title'] = osd['TextOsd']['title']
                     
                     
-        return osd
+        return [osd, return_val]
 
         
         
