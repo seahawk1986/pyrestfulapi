@@ -43,3 +43,5 @@ Found 1 timer(s).
 >>> print timers[0]['filename']
 Tagesschau
 
+In order to use osd_client.py you have to change the variable "ip" within the script to your VDR's IP.
+
