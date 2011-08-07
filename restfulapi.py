@@ -19,11 +19,11 @@
 
 # TODO: POST, PUT and DELETE commands (searchtimer, search)
 #       ERROR handling (connection, double timers etc.)
-#       EPG search -> HOWTO search quoted strings, regex ?
+#       EPG search -> HOWTO search quoted strings, regex (missing feature in plugin)
 #       searchtimer
 #       download channel images
 #       infos (used versions and plugins)
-#       OSD... maybe - seems quite complex for adapted 
+#       OSD - relative navigation by defining element to be selected or activated
 
 import urllib
 import urllib2
@@ -410,19 +410,14 @@ class RestfulAPI:
                     return_val['items'].append([number,value,item['is_selected']])
             # check if normal navigation as in EPG
             elif re.match("^\w{1,}\s*.*[0-9]{2}:[0-9]{2}",osd['TextOsd']['items'][0]['content'].lstrip()):
-                print "Schema: Eintrag ohne Nummer"
+
                 for item in osd['TextOsd']['items']:
                     print item['content']
                     return_val['items'].append(["",item['content'],item['is_selected']])
                     pass                
 
             elif re.match("^\w{1,}.*:",osd['TextOsd']['items'][0]['content'].lstrip()):
-                #print "Settings/Selection"
-                '''# This does not work because there are no values returned that are selected for editing :
-                for item in osd['TextOsd']['items']:
-                    if item['is_selected'] == True:
-                        if re.match("^.*:.*[.*].*",item['content']):
-                            print "Editing value"'''
+
                 for item in osd['TextOsd']['items']:
                     if item['is_selected'] == True:
                         if re.match("^.*:.*[.*].*",item['content']):
