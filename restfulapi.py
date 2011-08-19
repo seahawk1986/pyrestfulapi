@@ -408,10 +408,10 @@ class RestfulAPI:
             print "Now Playing: ",self.get_channel_by_number(channel_number)
 
         if osd.has_key('ProgrammeOsd'):
-                #print "Programm-Infos"
-                return_val['title'] = "Jetzt und Gleich"
+
+                return_val['title'] = "Now and next:"
                 for key in osd['ProgrammeOsd'].keys():
-                    #print key
+
                     return_val['items'].append([key,osd['ProgrammeOsd'][key],False]) 
 
         
