@@ -358,7 +358,7 @@ class RestfulAPI:
             if arg:
                 req_url = "%s/%s/%s/0.json?start=%s&limit=%s"%(self.base_url,cat,arg,start,limit)
             
-                print req_url
+                #print req_url
                 
             else:
                 json = {"count":0, "total":0}
