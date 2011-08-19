@@ -23,7 +23,7 @@
 #       searchtimer
 #       download channel images
 #       infos (used versions and plugins)
-#       OSD - relative navigation by defining element to be selected or activated
+#       OSD - relative navigation by defining element to be selected or activated, wrapper to input of Text/IPs
 
 import urllib
 import urllib2
@@ -241,8 +241,8 @@ class RestfulAPI:
             video = info['video']
         except:
             video = None
-
-        return [channel, video]
+        finally:
+            return [channel, video]
 
     def get_channel_image_url(self, channel_id=None, name=None):
         url = ''
@@ -353,8 +353,30 @@ class RestfulAPI:
             xml_str = "recordings"
             keyword = "recording"
 
+        if cat == "events":
+            xml_str = "events"
+            if arg:
+                req_url = "%s/%s/%s/0.json?start=%s&limit=%s"%(self.base_url,cat,arg,start,limit)
+            
+                print req_url
+                
+            else:
+                json = {"count":0, "total":0}
+
         json = self.JSON.decode(self.HTTP.GET(req_url))
         return json[xml_str], json['count'], json['total']
+
+    def get_epg(self, channel_id=None, start=0, limit=0):
+        try:
+            events, count, total = self.get_category(cat="events",arg=channel_id,start=start,limit=limit)
+        except:
+            events = {}
+            count = 0
+            total = 0
+    
+        finally:        
+            return events, count, total
+        
 
     def epg_search(self, args={"query":"","mode":0}, limit=0, start=0):
         req_url = "%s/events/search.json?start=%s&limit=%s"%(self.base_url,start,limit)
