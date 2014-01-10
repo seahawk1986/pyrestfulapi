@@ -2,7 +2,7 @@
 # coding: utf-8
 
 #   This is a python-module to access informations using VDR's RESTFULAPI plugin.
-#   Copyright (C) 2011  by Alexander Grothe <alexandergrothe@gmx.de>
+#   Copyright (C) 2011  by Alexander Grothe <alexandergrothe@gmx.net>
 #
 #   This program is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ class HttpClient:
     def GET(self, url):
         return self._opener.open(url).read()
 
-    def POST(self, url,parameters):
+    def POST(self, url,parameters={}):
         return self._opener.open(url, urllib.urlencode(parameters)).read()
 
     def POST_raw(self, url, parameters):
@@ -99,14 +99,14 @@ class RestfulAPI:
                     entry_list.append(paramdict)
                 else:
                     entry_list.append(entry.text)
-                    
+
             if entry.tag == "{http://www.domain.org/restfulapi/2011/%s-xml}count"%(xml_str):
                 count = int(entry.text)
-                #print "Counted "+entry.text+" elements."                         
+                #print "Counted "+entry.text+" elements."
             if entry.tag == "{http://www.domain.org/restfulapi/2011/%s-xml}total"%(xml_str):
                 total = int(entry.text)
                 #print "Total "+entry.text+" elements."
-        return entry_list, count, total           
+        return entry_list, count, total
 
     def get_list(self,cat=None,arg="",start=0,limit=0):
         '''returns a touple of elements as (list, count, total)'''
@@ -120,7 +120,7 @@ class RestfulAPI:
             req_url = "%s/channels/%s.xml"%(self.base_url,arg)
             xml_str = "channels"
             keyword = "channel"
-            
+
         if cat == "groups":
             req_url = "%s/channels/%s.xml?start=%s&limit=%s"%(self.base_url,cat,start,limit)
             xml_str = "groups"
@@ -143,7 +143,7 @@ class RestfulAPI:
             req_url = "%s/recordings.xml"%(self.base_url)
             xml_str = "recordings"
             keyword = "recording"
-        
+
         elementlist = []
         elementlist, count, total = self.get_entrys(self.get_elements(req_url),xml_str,keyword)
         return elementlist, count, total
@@ -171,10 +171,10 @@ class RestfulAPI:
                     if channel['number'] == number:
                         ret_ch = channel
                         break
-            
+
         return ret_ch
 
-                
+
     def get_groups(self,start=0,limit=0):
         channel_list, count, total = self.get_list(cat="groups",start=start,limit=limit)
         return groups_list, count, total
@@ -190,27 +190,37 @@ class RestfulAPI:
         return channel_list, count, total
 
     def get_timers(self,start=0,limit=0):
-        timer_list, count, total = self.get_list(cat="timers",start=start,limit=limit) 
+        timer_list, count, total = self.get_list(cat="timers",start=start,limit=limit)
         return timer_list, count, total
 
     def get_timer(self,timer_id=None):
         if timer_id != None:
-            timer_list, count, total = self.get_list(cat="timer",arg=timer_id) 
+            timer_list, count, total = self.get_list(cat="timer",arg=timer_id)
         else:
             timer_list = []
             count = 0
-            total = 0            
+            total = 0
         return timer_list, count, total
 
     def get_recordings(self):
-        rec_list, count, total = self.get_list(cat="recordings") 
+        rec_list, count, total = self.get_list(cat="recordings")
         return rec_list, count, total
 
     def delete_recording(self, rec_number=None):
         if rec_number != None:
-            url = "%s/recording/%s"%(self.base_url,rec_number)
+            url = "%s/recordings/%s"%(self.base_url, rec_number)
             return self.HTTP.DELETE(url)
-        
+
+    def play_recording(self, rec_number=None):
+        if rec_number != None:
+            url = "%s/recordings/play/%s"%(self.base_url, rec_number)
+            return self.HTTP.GET(url)
+
+    def rewind_and_play_recording(self, rec_number=None):
+        if rec_number != None:
+            url = "%s/recordings/play/%s"%(self.base_url, rec_number)
+            return self.HTTP.POST(url)
+
 
     def get_playing(self):
         cat = "info"
@@ -249,8 +259,8 @@ class RestfulAPI:
         for channel in self.channels:
             if (channel['channel_id'] == channel_id) or (channel['name'] == name):
                 if channel['image'] == 'true':
-                    url = "%s/channels/image/%s"%(self.base_url,channel['channel_id'])   
-                    break    
+                    url = "%s/channels/image/%s"%(self.base_url,channel['channel_id'])
+                    break
         return url
 
     def switch_to_channel(self, channel_id=None, name=None):
@@ -329,7 +339,7 @@ class RestfulAPI:
             req_url = "%s/channels/%s.json"%(self.base_url,arg)
             xml_str = "channels"
             keyword = "channel"
-            
+
         if cat == "groups":
             req_url = "%s/channels/%s.json?start=%s&limit=%s"%(self.base_url,cat,start,limit)
             xml_str = "groups"
@@ -357,9 +367,8 @@ class RestfulAPI:
             xml_str = "events"
             if arg:
                 req_url = "%s/%s/%s/0.json?start=%s&limit=%s"%(self.base_url,cat,arg,start,limit)
-            
                 #print req_url
-                
+
             else:
                 json = {"count":0, "total":0}
 
@@ -373,10 +382,9 @@ class RestfulAPI:
             events = {}
             count = 0
             total = 0
-    
-        finally:        
+
+        finally:
             return events, count, total
-        
 
     def epg_search(self, args={"query":"","mode":0}, limit=0, start=0):
         req_url = "%s/events/search.json?start=%s&limit=%s"%(self.base_url,start,limit)
@@ -400,7 +408,7 @@ class RestfulAPI:
         except:
             osd = None
             return [osd,return_val]
-        
+
 
         if osd.has_key('ChannelOsd'):
             channel_number, channel_name = re.split("\s*",osd['ChannelOsd'],1)
@@ -414,15 +422,15 @@ class RestfulAPI:
 
                     return_val['items'].append([key,osd['ProgrammeOsd'][key],False]) 
 
-        
+
         if (osd.has_key('TextOsd')) and (len(osd['TextOsd']['items']) > 0):
-            
+
             return_val['red'] = osd['TextOsd']['red']
             return_val['yellow'] = osd['TextOsd']['yellow']
             return_val['green'] = osd['TextOsd']['green']
             return_val['blue'] = osd['TextOsd']['blue']
             return_val['title'] = osd['TextOsd']['title']
-            
+
             # check if "normal" OSD menu is displayed (navigation by numbers is possible)
             if re.match("^[0-9]{1,}\s*\w*", osd['TextOsd']['items'][0]['content'].lstrip()):
                 #print "Schema: <Nummer> <Eintrag>"
@@ -436,7 +444,7 @@ class RestfulAPI:
                 for item in osd['TextOsd']['items']:
                     print item['content']
                     return_val['items'].append(["",item['content'],item['is_selected']])
-                    pass                
+                    pass
 
             elif re.match("^\w{1,}.*:",osd['TextOsd']['items'][0]['content'].lstrip()):
 
@@ -454,18 +462,11 @@ class RestfulAPI:
                     return_val['items'].append(["",item['content'],item['is_selected']])
 
         elif (osd.has_key('TextOsd')) and (len(osd['TextOsd']['items']) == 0):
-            
+
             return_val['red'] = osd['TextOsd']['red']
             return_val['yellow'] = osd['TextOsd']['yellow']
             return_val['green'] = osd['TextOsd']['green']
             return_val['blue'] = osd['TextOsd']['blue']
             return_val['title'] = osd['TextOsd']['title']
-                    
-                    
         return [osd, return_val]
-
-        
-        
-        
-
 
